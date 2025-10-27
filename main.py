@@ -3,7 +3,7 @@ import time
 import logging
 from datetime import datetime
 from typing import List, Dict, Any
-from pycomm3 import LogixDriver
+from cpppo.server.enip import client
 import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
 import os
@@ -24,11 +24,13 @@ class EtherNetIPToMQTT:
         """Initialize the bridge with configuration."""
         self.config = config
         self.mqtt_client = None
-        self.plc = None
+        self.plc_connection = None
         self.running = False
         self.mqtt_reconnect_delay = 5
         self.plc_reconnect_delay = 5
         self.max_reconnect_delay = 60
+        self.plc_host = None
+        self.plc_timeout = 5.0
         
     def setup_mqtt(self):
         """Set up MQTT client connection."""
@@ -82,19 +84,21 @@ class EtherNetIPToMQTT:
         plc_config = self.config['ethernetip']
         
         try:
-            if self.plc:
+            if self.plc_connection:
                 try:
-                    self.plc.close()
+                    self.plc_connection.close()
                 except:
                     pass
             
-            self.plc = LogixDriver(plc_config['ip_address'])
-            self.plc.open()
-            logger.info(f"Connected to PLC at {plc_config['ip_address']}")
+            self.plc_host = plc_config['ip_address']
+            self.plc_connection = client.connector(host=self.plc_host, timeout=self.plc_timeout)
+            self.plc_connection.__enter__()
+            logger.info(f"Connected to PLC at {self.plc_host}")
             self.plc_reconnect_delay = 5
             return True
         except Exception as e:
             logger.error(f"Failed to connect to PLC: {e}")
+            self.plc_connection = None
             return False
     
     def reconnect_mqtt(self):
@@ -132,37 +136,38 @@ class EtherNetIPToMQTT:
         return False
     
     def read_tags(self) -> Dict[str, Any]:
-        """Read configured tags from PLC."""
+        """Read configured tags from PLC using cpppo."""
         tags = self.config['ethernetip']['tags']
         results = {}
         
-        if not self.plc:
+        if not self.plc_connection:
             logger.error("PLC connection not established")
             raise ConnectionError("PLC not connected")
         
-        failed_reads = 0
-        for tag in tags:
-            try:
-                response = self.plc.read(tag)
-                if hasattr(response, 'error') and response.error:
-                    logger.error(f"Error reading tag {tag}: {response.error}")
-                    results[tag] = None
-                    failed_reads += 1
-                elif hasattr(response, 'value'):
-                    results[tag] = response.value
-                    logger.debug(f"Read {tag}: {response.value}")
+        try:
+            operations = client.parse_operations(tags)
+            
+            failed_reads = 0
+            for index, descr, op, reply, status, value in self.plc_connection.synchronous(operations=operations):
+                tag_name = descr.split(':')[0].strip() if ':' in descr else descr.strip()
+                
+                if status == 0:
+                    results[tag_name] = value
+                    logger.debug(f"Read {tag_name}: {value}")
                 else:
-                    results[tag] = None
+                    logger.error(f"Error reading tag {tag_name}: Status {status}")
+                    results[tag_name] = None
                     failed_reads += 1
-            except Exception as e:
-                logger.error(f"Exception reading tag {tag}: {e}")
-                failed_reads += 1
-                if "socket" in str(e).lower() or "connection" in str(e).lower():
-                    raise ConnectionError(f"PLC connection lost: {e}")
+            
+            if failed_reads == len(tags) and len(tags) > 0:
+                raise ConnectionError("All tag reads failed, connection may be lost")
+            
+        except Exception as e:
+            logger.error(f"Exception reading tags: {e}")
+            if "socket" in str(e).lower() or "connection" in str(e).lower() or "closed" in str(e).lower():
+                raise ConnectionError(f"PLC connection lost: {e}")
+            for tag in tags:
                 results[tag] = None
-        
-        if failed_reads == len(tags) and len(tags) > 0:
-            raise ConnectionError("All tag reads failed, connection may be lost")
         
         return results
     
@@ -239,9 +244,9 @@ class EtherNetIPToMQTT:
         """Clean up connections."""
         self.running = False
         
-        if self.plc:
+        if self.plc_connection:
             try:
-                self.plc.close()
+                self.plc_connection.__exit__(None, None, None)
                 logger.info("Closed PLC connection")
             except Exception as e:
                 logger.error(f"Error closing PLC connection: {e}")

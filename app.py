@@ -30,7 +30,7 @@ def get_bridge_status():
             'status': 'running' if bridge_instance.running else 'stopped',
             'running': bridge_instance.running,
             'mqtt_connected': bridge_instance.mqtt_client and bridge_instance.mqtt_client.is_connected() if bridge_instance.mqtt_client else False,
-            'plc_connected': bridge_instance.plc is not None
+            'plc_connected': bridge_instance.plc_connection is not None
         }
 
 
