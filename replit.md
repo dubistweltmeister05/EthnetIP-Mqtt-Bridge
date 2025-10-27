@@ -34,6 +34,13 @@ This project is a Python-based data bridge that connects EtherNet/IP industrial 
   - Created responsive CSS styling and JavaScript for auto-refreshing status
   - Updated workflow to run Flask app on port 5000
   - Updated documentation to reflect web interface features
+  
+- **2025-10-27**: Migration to cpppo Library
+  - Replaced pycomm3 with cpppo for EtherNet/IP communication
+  - Updated PLC connection handling to use cpppo's client.connector API
+  - Modified tag reading to use cpppo's synchronous operations
+  - Improved support for various CIP devices beyond just Logix controllers
+  - Better handling of high-latency industrial network connections
 
 ## Project Architecture
 
@@ -57,7 +64,7 @@ This project is a Python-based data bridge that connects EtherNet/IP industrial 
 
 ### Dependencies
 - **Flask**: Web framework for configuration interface
-- **pycomm3**: EtherNet/IP protocol communication
+- **cpppo**: EtherNet/IP CIP protocol communication library
 - **paho-mqtt**: MQTT client library
 - **python-dotenv**: Environment variable management
 
@@ -70,12 +77,14 @@ This project is a Python-based data bridge that connects EtherNet/IP industrial 
    - Thread-safe bridge instance management
 
 2. **EtherNetIPToMQTT Class (main.py)**: Main bridge logic
-   - PLC connection management with automatic reconnection
+   - PLC connection management using cpppo's client.connector API
+   - Automatic reconnection with exponential backoff
    - MQTT client setup with MQTTv5 support
-   - Tag polling loop with configurable intervals
+   - Tag polling loop using cpppo's synchronous operations
    - Data publishing with timestamp
    - Exponential backoff reconnection strategy (max 60s delay)
    - Connection health detection and recovery
+   - Support for various CIP data types (INT, DINT, REAL, SSTRING, etc.)
 
 3. **Configuration System**:
    - JSON-based configuration (config.json)

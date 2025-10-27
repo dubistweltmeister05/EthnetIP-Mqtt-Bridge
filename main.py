@@ -146,10 +146,11 @@ class EtherNetIPToMQTT:
         
         try:
             operations = client.parse_operations(tags)
+            tag_map = {i: tag for i, tag in enumerate(tags)}
             
             failed_reads = 0
             for index, descr, op, reply, status, value in self.plc_connection.synchronous(operations=operations):
-                tag_name = descr.split(':')[0].strip() if ':' in descr else descr.strip()
+                tag_name = tag_map.get(index, descr.strip())
                 
                 if status == 0:
                     results[tag_name] = value
@@ -247,9 +248,11 @@ class EtherNetIPToMQTT:
         if self.plc_connection:
             try:
                 self.plc_connection.__exit__(None, None, None)
+                self.plc_connection = None
                 logger.info("Closed PLC connection")
             except Exception as e:
                 logger.error(f"Error closing PLC connection: {e}")
+                self.plc_connection = None
         
         if self.mqtt_client:
             try:

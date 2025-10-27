@@ -19,7 +19,7 @@ A Python application that reads data from EtherNet/IP devices (PLCs) and publish
 
 - Python 3.11+
 - Flask (Web interface)
-- pycomm3 (EtherNet/IP communication)
+- cpppo (EtherNet/IP CIP protocol communication)
 - paho-mqtt (MQTT client)
 - python-dotenv (configuration management)
 
@@ -128,11 +128,15 @@ Messages are published to `{topic_base}/data` with the following JSON structure:
 
 ## Supported PLC Types
 
-The application uses pycomm3 and supports:
+The application uses cpppo (Communications Protocol Python Parser and Originator) for EtherNet/IP CIP communication and supports:
 - Allen-Bradley CompactLogix
 - Allen-Bradley ControlLogix
+- Allen-Bradley MicroLogix
 - Allen-Bradley Micro800
-- Other EtherNet/IP compatible devices
+- PowerFlex drives
+- Other EtherNet/IP CIP compatible devices
+
+Cpppo provides robust support for industrial protocols with excellent handling of high-latency connections and advanced CIP features.
 
 ## Error Handling
 
