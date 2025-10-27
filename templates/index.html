@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - EtherNet/IP to MQTT Bridge{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <h2>Dashboard</h2>
+    
+    <div class="status-section">
+        <h3>Bridge Status</h3>
+        <div class="status-card" id="status-card">
+            <div class="status-row">
+                <span class="status-label">Bridge:</span>
+                <span class="status-value" id="bridge-status">
+                    <span class="status-indicator {{ 'active' if status.running else 'inactive' }}"></span>
+                    {{ 'Running' if status.running else 'Stopped' }}
+                </span>
+            </div>
+            <div class="status-row">
+                <span class="status-label">MQTT Connection:</span>
+                <span class="status-value" id="mqtt-status">
+                    <span class="status-indicator {{ 'active' if status.mqtt_connected else 'inactive' }}"></span>
+                    {{ 'Connected' if status.mqtt_connected else 'Disconnected' }}
+                </span>
+            </div>
+            <div class="status-row">
+                <span class="status-label">PLC Connection:</span>
+                <span class="status-value" id="plc-status">
+                    <span class="status-indicator {{ 'active' if status.plc_connected else 'inactive' }}"></span>
+                    {{ 'Connected' if status.plc_connected else 'Disconnected' }}
+                </span>
+            </div>
+        </div>
+        
+        <div class="control-buttons">
+            <button id="start-btn" class="btn btn-success" {{ 'disabled' if status.running else '' }}>Start Bridge</button>
+            <button id="stop-btn" class="btn btn-danger" {{ 'disabled' if not status.running else '' }}>Stop Bridge</button>
+        </div>
+    </div>
+    
+    <div class="config-preview">
+        <h3>Current Configuration</h3>
+        <div class="config-card">
+            <h4>MQTT Settings</h4>
+            <table class="config-table">
+                <tr>
+                    <td class="config-label">Broker:</td>
+                    <td class="config-value">{{ config.mqtt.broker }}</td>
+                </tr>
+                <tr>
+                    <td class="config-label">Port:</td>
+                    <td class="config-value">{{ config.mqtt.port }}</td>
+                </tr>
+                <tr>
+                    <td class="config-label">Topic Base:</td>
+                    <td class="config-value">{{ config.mqtt.topic_base }}</td>
+                </tr>
+            </table>
+            
+            <h4>PLC Settings</h4>
+            <table class="config-table">
+                <tr>
+                    <td class="config-label">IP Address:</td>
+                    <td class="config-value">{{ config.ethernetip.ip_address }}</td>
+                </tr>
+                <tr>
+                    <td class="config-label">Tags:</td>
+                    <td class="config-value">{{ config.ethernetip.tags|join(', ') }}</td>
+                </tr>
+                <tr>
+                    <td class="config-label">Poll Interval:</td>
+                    <td class="config-value">{{ config.poll_interval }}s</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const startBtn = document.getElementById('start-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    
+    startBtn.addEventListener('click', async function() {
+        try {
+            const response = await fetch('/api/start', { method: 'POST' });
+            const data = await response.json();
+            
+            if (data.success) {
+                alert('Bridge started successfully!');
+                location.reload();
+            } else {
+                alert('Failed to start bridge: ' + data.message);
+            }
+        } catch (error) {
+            alert('Error starting bridge: ' + error);
+        }
+    });
+    
+    stopBtn.addEventListener('click', async function() {
+        try {
+            const response = await fetch('/api/stop', { method: 'POST' });
+            const data = await response.json();
+            
+            if (data.success) {
+                alert('Bridge stopped successfully!');
+                location.reload();
+            } else {
+                alert('Failed to stop bridge: ' + data.message);
+            }
+        } catch (error) {
+            alert('Error stopping bridge: ' + error);
+        }
+    });
+    
+    setInterval(async function() {
+        try {
+            const response = await fetch('/api/status');
+            const status = await response.json();
+            
+            document.getElementById('bridge-status').innerHTML = `
+                <span class="status-indicator ${status.running ? 'active' : 'inactive'}"></span>
+                ${status.running ? 'Running' : 'Stopped'}
+            `;
+            
+            document.getElementById('mqtt-status').innerHTML = `
+                <span class="status-indicator ${status.mqtt_connected ? 'active' : 'inactive'}"></span>
+                ${status.mqtt_connected ? 'Connected' : 'Disconnected'}
+            `;
+            
+            document.getElementById('plc-status').innerHTML = `
+                <span class="status-indicator ${status.plc_connected ? 'active' : 'inactive'}"></span>
+                ${status.plc_connected ? 'Connected' : 'Disconnected'}
+            `;
+            
+            startBtn.disabled = status.running;
+            stopBtn.disabled = !status.running;
+        } catch (error) {
+            console.error('Error fetching status:', error);
+        }
+    }, 3000);
+});
+</script>
+{% endblock %}

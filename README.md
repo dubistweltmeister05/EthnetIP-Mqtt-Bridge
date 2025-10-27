@@ -4,17 +4,21 @@ A Python application that reads data from EtherNet/IP devices (PLCs) and publish
 
 ## Features
 
+- **Web-based Dashboard**: Configure and monitor the bridge through a user-friendly web interface
+- **Real-time Status Monitoring**: View connection status for MQTT and PLC in real-time
 - Connect to Allen-Bradley and other EtherNet/IP compatible PLCs
 - Read multiple tags from PLC at configurable intervals
 - Publish data to MQTT broker in JSON format with timestamp
 - Support for MQTT authentication
-- Automatic reconnection handling
+- Automatic reconnection handling with exponential backoff
 - Comprehensive logging
 - Environment variable support for sensitive configuration
+- Start/Stop bridge control from web interface
 
 ## Requirements
 
 - Python 3.11+
+- Flask (Web interface)
 - pycomm3 (EtherNet/IP communication)
 - paho-mqtt (MQTT client)
 - python-dotenv (configuration management)
@@ -64,14 +68,46 @@ Copy `.env.example` to `.env` and configure as needed.
 
 ## Usage
 
+### Web Interface (Recommended)
+
+1. Run the Flask web application:
+
+```bash
+python app.py
+```
+
+2. Open your browser and navigate to `http://localhost:5000`
+3. Use the web dashboard to:
+   - View real-time status of MQTT and PLC connections
+   - Start/Stop the bridge
+   - Configure all settings through the web interface
+   - Monitor the current configuration
+
+### Command Line Interface (Alternative)
+
 1. Edit `config.json` with your PLC IP address and tags to monitor
 2. Configure MQTT broker settings
 3. (Optional) Set environment variables in `.env` file
-4. Run the application:
+4. Run the application directly:
 
 ```bash
 python main.py
 ```
+
+## Web Interface Features
+
+### Dashboard
+- Real-time connection status indicators
+- Start/Stop bridge controls
+- View current configuration at a glance
+- Auto-refreshing status updates every 3 seconds
+
+### Configuration Page
+- Edit MQTT broker settings (host, port, credentials)
+- Configure PLC connection (IP address, tags to monitor)
+- Set poll interval
+- Adjust MQTT QoS and retain settings
+- Save configuration without restarting the application
 
 ## MQTT Message Format
 
@@ -100,9 +136,12 @@ The application uses pycomm3 and supports:
 
 ## Error Handling
 
+- **Automatic Reconnection**: Both MQTT and PLC connections automatically reconnect with exponential backoff
 - Connection failures are logged and the application will attempt to reconnect
 - Tag read errors are logged, and null values are sent for failed reads
 - MQTT publish failures are logged but don't stop the polling loop
+- Maximum reconnection delay capped at 60 seconds
+- Connection recovery detection triggers immediate reconnection attempts
 
 ## Logging
 
@@ -114,7 +153,16 @@ All operations are logged with timestamps. Log levels:
 
 ## Customization
 
-### Adding More Tags
+### Using the Web Interface
+
+1. Navigate to the Configuration page
+2. Update any settings through the web form
+3. Click "Save Configuration"
+4. Restart the bridge if it's currently running
+
+### Manually Editing config.json
+
+#### Adding More Tags
 
 Edit the `tags` array in `config.json`:
 
@@ -127,7 +175,7 @@ Edit the `tags` array in `config.json`:
 ]
 ```
 
-### Changing Poll Interval
+#### Changing Poll Interval
 
 Modify `poll_interval` in `config.json` (value in seconds):
 
@@ -135,7 +183,7 @@ Modify `poll_interval` in `config.json` (value in seconds):
 "poll_interval": 10
 ```
 
-### MQTT QoS and Retain
+#### MQTT QoS and Retain
 
 Adjust MQTT publish settings:
 

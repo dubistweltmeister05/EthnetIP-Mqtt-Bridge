@@ -10,8 +10,10 @@ This project is a Python-based data bridge that connects EtherNet/IP industrial 
 
 ## Current State
 - Core functionality implemented (EtherNet/IP reading + MQTT publishing)
+- Flask web interface for configuration and monitoring
+- Real-time status dashboard
 - Configuration via JSON file with environment variable overrides
-- Error handling and reconnection logic
+- Robust error handling and automatic reconnection logic with exponential backoff
 - Comprehensive logging
 
 ## Recent Changes
@@ -21,40 +23,72 @@ This project is a Python-based data bridge that connects EtherNet/IP industrial 
   - Implemented MQTT publishing using paho-mqtt
   - Added configuration system with JSON and environment variables
   - Created documentation and example configuration
+  - Added automatic reconnection logic for both MQTT and PLC connections
+  
+- **2025-10-27**: Flask Web Interface Addition
+  - Installed Flask framework
+  - Created Flask web application (app.py)
+  - Built web dashboard with real-time status monitoring
+  - Added configuration page for web-based settings management
+  - Implemented Start/Stop bridge controls via web interface
+  - Created responsive CSS styling and JavaScript for auto-refreshing status
+  - Updated workflow to run Flask app on port 5000
+  - Updated documentation to reflect web interface features
 
 ## Project Architecture
 
 ### Structure
 ```
 .
-├── main.py              # Main application and bridge logic
-├── config.json          # Configuration file (user editable)
-├── .env.example         # Example environment variables
-├── README.md            # User documentation
-└── replit.md           # Project memory and documentation
+├── app.py                    # Flask web application
+├── main.py                   # Core bridge logic and EtherNetIPToMQTT class
+├── config.json               # Configuration file (user editable)
+├── .env.example              # Example environment variables
+├── templates/                # Flask HTML templates
+│   ├── base.html             # Base template with navigation
+│   ├── index.html            # Dashboard page
+│   └── config.html           # Configuration page
+├── static/                   # Static assets
+│   ├── css/style.css         # Styling
+│   └── js/main.js            # JavaScript
+├── README.md                 # User documentation
+└── replit.md                 # Project memory and documentation
 ```
 
 ### Dependencies
+- **Flask**: Web framework for configuration interface
 - **pycomm3**: EtherNet/IP protocol communication
 - **paho-mqtt**: MQTT client library
 - **python-dotenv**: Environment variable management
 
 ### Key Components
-1. **EtherNetIPToMQTT Class**: Main bridge logic
-   - PLC connection management
-   - MQTT client setup
-   - Tag polling loop
-   - Data publishing
+1. **Flask Web Application (app.py)**:
+   - Dashboard with real-time status monitoring
+   - Configuration page for settings management
+   - REST API endpoints for bridge control (/api/start, /api/stop, /api/status)
+   - Threading support to run bridge in background
+   - Thread-safe bridge instance management
 
-2. **Configuration System**:
-   - JSON-based configuration
+2. **EtherNetIPToMQTT Class (main.py)**: Main bridge logic
+   - PLC connection management with automatic reconnection
+   - MQTT client setup with MQTTv5 support
+   - Tag polling loop with configurable intervals
+   - Data publishing with timestamp
+   - Exponential backoff reconnection strategy (max 60s delay)
+   - Connection health detection and recovery
+
+3. **Configuration System**:
+   - JSON-based configuration (config.json)
    - Environment variable overrides for sensitive data
    - Flexible tag list configuration
+   - Web-based configuration editor
 
-3. **Error Handling**:
-   - Connection retry logic
+4. **Error Handling**:
+   - Automatic reconnection for MQTT with exponential backoff
+   - Automatic reconnection for PLC with exponential backoff
+   - Connection loss detection via ConnectionError exceptions
    - Graceful degradation on read failures
-   - Comprehensive logging
+   - Comprehensive logging at all levels
 
 ## Configuration
 
@@ -73,6 +107,10 @@ This project is a Python-based data bridge that connects EtherNet/IP industrial 
 None documented yet.
 
 ## Notes
-- Application runs in console mode with continuous polling
+- Application runs as Flask web server on port 5000
+- Bridge operates in background thread when started via web interface
 - Data is published with UTC timestamps
 - Supports both authenticated and unauthenticated MQTT connections
+- Web dashboard auto-refreshes status every 3 seconds
+- Configuration can be edited via web interface or directly in config.json
+- Bridge can be controlled (start/stop) via web interface or run standalone with main.py
