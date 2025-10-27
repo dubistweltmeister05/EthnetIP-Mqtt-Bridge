@@ -26,27 +26,32 @@ class EtherNetIPToMQTT:
         self.mqtt_client = None
         self.plc = None
         self.running = False
+        self.mqtt_reconnect_delay = 5
+        self.plc_reconnect_delay = 5
+        self.max_reconnect_delay = 60
         
     def setup_mqtt(self):
         """Set up MQTT client connection."""
         mqtt_config = self.config['mqtt']
         
-        def on_connect(client, userdata, flags, rc, properties=None):
-            if rc == 0:
+        def on_connect(client, userdata, flags, reason_code, properties):
+            if reason_code == 0:
                 logger.info(f"Connected to MQTT broker at {mqtt_config['broker']}:{mqtt_config['port']}")
             else:
-                logger.error(f"Failed to connect to MQTT broker, return code: {rc}")
+                logger.error(f"Failed to connect to MQTT broker, return code: {reason_code}")
         
-        def on_disconnect(client, userdata, rc, properties=None):
-            logger.warning(f"Disconnected from MQTT broker, return code: {rc}")
-            if rc != 0 and self.running:
-                logger.info("Attempting to reconnect...")
+        def on_disconnect(client, userdata, disconnect_flags, reason_code, properties):
+            logger.warning(f"Disconnected from MQTT broker, return code: {reason_code}")
+            if reason_code != 0 and self.running:
+                logger.info("Attempting to reconnect to MQTT broker...")
+                self.reconnect_mqtt()
         
-        def on_publish(client, userdata, mid, properties=None):
+        def on_publish(client, userdata, mid, reason_code, properties):
             logger.debug(f"Message {mid} published successfully")
         
         self.mqtt_client = mqtt.Client(
             client_id=mqtt_config.get('client_id', 'ethernetip_bridge'),
+            callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
             protocol=mqtt.MQTTv5
         )
         
@@ -77,13 +82,54 @@ class EtherNetIPToMQTT:
         plc_config = self.config['ethernetip']
         
         try:
+            if self.plc:
+                try:
+                    self.plc.close()
+                except:
+                    pass
+            
             self.plc = LogixDriver(plc_config['ip_address'])
             self.plc.open()
             logger.info(f"Connected to PLC at {plc_config['ip_address']}")
+            self.plc_reconnect_delay = 5
             return True
         except Exception as e:
             logger.error(f"Failed to connect to PLC: {e}")
             return False
+    
+    def reconnect_mqtt(self):
+        """Attempt to reconnect to MQTT broker with exponential backoff."""
+        delay = self.mqtt_reconnect_delay
+        while self.running:
+            try:
+                logger.info(f"Reconnecting to MQTT broker in {delay} seconds...")
+                time.sleep(delay)
+                self.mqtt_client.reconnect()
+                logger.info("Successfully reconnected to MQTT broker")
+                self.mqtt_reconnect_delay = 5
+                return
+            except Exception as e:
+                logger.error(f"MQTT reconnection failed: {e}")
+                delay = min(delay * 2, self.max_reconnect_delay)
+                self.mqtt_reconnect_delay = delay
+    
+    def reconnect_plc(self):
+        """Attempt to reconnect to PLC with exponential backoff."""
+        delay = self.plc_reconnect_delay
+        while self.running:
+            try:
+                logger.info(f"Reconnecting to PLC in {delay} seconds...")
+                time.sleep(delay)
+                if self.setup_plc():
+                    logger.info("Successfully reconnected to PLC")
+                    return True
+                delay = min(delay * 2, self.max_reconnect_delay)
+                self.plc_reconnect_delay = delay
+            except Exception as e:
+                logger.error(f"PLC reconnection failed: {e}")
+                delay = min(delay * 2, self.max_reconnect_delay)
+                self.plc_reconnect_delay = delay
+        return False
     
     def read_tags(self) -> Dict[str, Any]:
         """Read configured tags from PLC."""
@@ -92,22 +138,31 @@ class EtherNetIPToMQTT:
         
         if not self.plc:
             logger.error("PLC connection not established")
-            return results
+            raise ConnectionError("PLC not connected")
         
+        failed_reads = 0
         for tag in tags:
             try:
                 response = self.plc.read(tag)
                 if hasattr(response, 'error') and response.error:
                     logger.error(f"Error reading tag {tag}: {response.error}")
                     results[tag] = None
+                    failed_reads += 1
                 elif hasattr(response, 'value'):
                     results[tag] = response.value
                     logger.debug(f"Read {tag}: {response.value}")
                 else:
                     results[tag] = None
+                    failed_reads += 1
             except Exception as e:
                 logger.error(f"Exception reading tag {tag}: {e}")
+                failed_reads += 1
+                if "socket" in str(e).lower() or "connection" in str(e).lower():
+                    raise ConnectionError(f"PLC connection lost: {e}")
                 results[tag] = None
+        
+        if failed_reads == len(tags) and len(tags) > 0:
+            raise ConnectionError("All tag reads failed, connection may be lost")
         
         return results
     
@@ -164,6 +219,11 @@ class EtherNetIPToMQTT:
                 try:
                     data = self.read_tags()
                     self.publish_to_mqtt(data)
+                except ConnectionError as e:
+                    logger.error(f"Connection error in polling loop: {e}")
+                    logger.info("Attempting to reconnect to PLC...")
+                    if not self.reconnect_plc():
+                        logger.error("Failed to reconnect to PLC, will retry on next cycle")
                 except Exception as e:
                     logger.error(f"Error in polling loop: {e}")
                 
