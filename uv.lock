@@ -307,15 +307,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pycomm3"
-version = "1.2.14"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/3f/b2/df114dbd89e5d76b0095c4d10b981da11d788962fe325e6df349fe31698b/pycomm3-1.2.14.tar.gz", hash = "sha256:ffabe89cda3df733fc046e261c15d263134f2f35d7dbb6aedf788203a10615b7", size = 82534, upload-time = "2023-08-27T15:50:12.516Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a8/51/b6311236a3799e2432343a249f6f6628f4160b44881381433739c85eccd2/pycomm3-1.2.14-py3-none-any.whl", hash = "sha256:49cd78b13bddf2ff234f77dc1d9048f5e139ac6fa2b77c7320aa2b90eb5c4ace", size = 99070, upload-time = "2023-08-27T15:50:10.849Z" },
-]
-
-[[package]]
 name = "python-dotenv"
 version = "1.2.1"
 source = { registry = "https://pypi.org/simple" }
@@ -344,7 +335,6 @@ dependencies = [
     { name = "cpppo" },
     { name = "flask" },
     { name = "paho-mqtt" },
-    { name = "pycomm3" },
     { name = "python-dotenv" },
 ]
 
@@ -353,7 +343,6 @@ requires-dist = [
     { name = "cpppo", specifier = ">=5.2.5" },
     { name = "flask", specifier = ">=3.1.2" },
     { name = "paho-mqtt", specifier = ">=2.1.0" },
-    { name = "pycomm3", specifier = ">=1.2.14" },
     { name = "python-dotenv", specifier = ">=1.2.1" },
 ]
 
