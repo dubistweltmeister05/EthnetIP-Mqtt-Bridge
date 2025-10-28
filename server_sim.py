@@ -13,7 +13,7 @@ def run_server():
     try:
         main.main(
             argv=[
-                "--address", "0.0.0.0",
+                "--address", "192.168.1.86",
                 "Temperature=REAL",
                 "Pressure=REAL",
                 "MotorSpeed=DINT",
