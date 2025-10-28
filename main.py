@@ -137,7 +137,7 @@ class EtherNetIPToMQTT:
     
     def read_tags(self) -> Dict[str, Any]:
         """Read configured tags from PLC using cpppo."""
-        tags = self.config['ethernetip']['tags']
+        tags = ["Temperature", "Pressure", "MotorSpeed"]
         results = {}
         
         if not self.plc_connection:
