@@ -1,6 +1,6 @@
 {
   "mqtt": {
-    "broker": "mqtt.example.com",
+    "broker": "192.168.1.86",
     "port": 1883,
     "client_id": "ethernetip_bridge",
     "topic_base": "ethernetip",
@@ -10,7 +10,7 @@
     "password": ""
   },
   "ethernetip": {
-  "ip_address": "127.0.0.1",
+  "ip_address": "192.168.1.86",
     "tags": [
       "Temperature",
       "Pressure",
@@ -20,3 +20,4 @@
   },
   "poll_interval": 5
 }
+
