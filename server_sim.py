@@ -17,7 +17,6 @@ def run_server():
                 "Temperature=REAL",
                 "Pressure=REAL",
                 "MotorSpeed=DINT",
-                "--writeable",
                 "--print"
             ]
         )

@@ -1,34 +1,27 @@
-import time
-import random
-import logging
 from cpppo.server.enip import client
+import time
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("EtherNetIPClient")
+host = "127.0.0.1"  # Change if server runs remotely (e.g., "192.168.1.86")
 
-def write_tags():
-    host = "127.0.0.1"  # Change if server runs elsewhere
+def tags():
+    # Write values first
+    yield f"Temperature=(REAL){25.0 + (time.time() % 10):.2f}"
+    yield f"Pressure=(REAL){1.0 + (time.time() % 5):.2f}"
+    yield f"MotorSpeed=(DINT){int(time.time() * 100 % 3000)}"
 
-    # Define tags and their value generation
-    tags = {
-        "Temperature": lambda: round(random.uniform(20.0, 35.0), 2),
-        "Pressure": lambda: round(random.uniform(1.0, 10.0), 2),
-        "MotorSpeed": lambda: random.randint(1000, 3000)
-    }
+    # Then read them back
+    # yield "Temperature"
+    # yield "Pressure"
+    # yield "MotorSpeed"
 
-    logger.info(f"Connecting to EtherNet/IP server at {host}...")
-    with client.connector(host=host) as conn:
-        logger.info("Connected successfully!")
-
-        while True:
-            for tag, value_gen in tags.items():
-                value = value_gen()
-                try:
-                    conn.write(tag, value)
-                    logger.info(f"Wrote {tag} = {value}")
-                except Exception as e:
-                    logger.error(f"Failed to write {tag}: {e}")
-            time.sleep(2)
-
-if __name__ == "__main__":
-    write_tags()
+with client.connector(host=host) as conn:
+    for depth in (1, 3):
+        start = time.time()
+        for index, descr, op, reply, status, value in conn.pipeline(
+            operations=client.parse_operations(tags()), depth=depth
+        ):
+            if value is True:
+                continue  # Skip writes
+            print(f"{index:02d}: {descr:20s} → {value}")
+        dur = time.time() - start
+        print(f"Depth {depth}: Completed {index + 1} ops in {dur:.3f}s\n")
