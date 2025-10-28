@@ -5,8 +5,8 @@ host = "127.0.0.1"  # Change if server runs remotely (e.g., "192.168.1.86")
 
 def tags():
     # Write values first
-    yield f"Temperature=(REAL){25.0 + (time.time() % 10):.2f}"
-    yield f"Pressure=(REAL){1.0 + (time.time() % 5):.2f}"
+    yield f"Temperature=(REAL) {25.0  + (time.time() % 5):.2f}"
+    yield f"Pressure=(REAL) {42.0  + (time.time() % 5):.2f}"
     yield f"MotorSpeed=(DINT){int(time.time() * 100 % 3000)}"
 
     # Then read them back
